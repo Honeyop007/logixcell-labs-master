@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Resend } from 'resend';
-import doten from 'dotenv';
-doten.config();
+import emailjs from '@emailjs/browser';
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -14,11 +12,6 @@ function Contact() {
   const [status, setStatus] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize Resend with your API key
-  // Note: In production, you should not expose your API key in client-side code
-  // Consider using environment variables and a proper backend for production
-  const resend = new Resend(process.env.RESEND_API_KEY);
-
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({
@@ -30,49 +23,31 @@ function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
+    if (!formData.name || !formData.email || !formData.message) {
+      setStatus({ success: false, message: 'Please fill out all required fields.' });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const serviceID = 'service_eh7tcj6';
+    const templateID = 'template_deg08j4';
+    const publicKey = 'ibB0mZCv1qwnxdjgq';
+
+    const templateParams = {
+      from_name: formData.name,
+      from_email: formData.email,
+      subject: formData.subject,
+      message: formData.message,
+    };
+
     try {
-      // Validate required fields
-      if (!formData.name || !formData.email || !formData.message) {
-        setStatus({ 
-          success: false, 
-          message: 'Please fill out all required fields.'
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Send email directly using Resend
-      await resend.emails.send({
-        from: 'onboarding@resend.dev', // Must be a verified sender in Resend
-        to: 'logixcelllabs@gmail.com',
-        subject: formData.subject || 'Contact Form Submission',
-        html: `
-          <h3>New Message from Contact Form</h3>
-          <p><strong>Name:</strong> ${formData.name}</p>
-          <p><strong>Email:</strong> ${formData.email}</p>
-          <p><strong>Message:</strong><br/>${formData.message}</p>
-        `,
-      });
-
-      // Reset form and show success message
-      setFormData({
-        name: '',
-        email: '',
-        subject: '',
-        message: '',
-      });
-      
-      setStatus({ 
-        success: true, 
-        message: 'Your message was sent successfully!' 
-      });
+      await emailjs.send(serviceID, templateID, templateParams, publicKey);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+      setStatus({ success: true, message: 'Your message was sent successfully!' });
     } catch (error) {
-      console.error('Error sending email:', error);
-      setStatus({ 
-        success: false, 
-        message: 'Failed to send message. Please try again later.' 
-      });
+      console.error('Email sending failed:', error);
+      setStatus({ success: false, message: 'Failed to send message. Please try again later.' });
     } finally {
       setIsSubmitting(false);
     }
